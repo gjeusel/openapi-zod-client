@@ -320,6 +320,10 @@ export type TemplateContextOptions = {
      */
     withImplicitRequiredProps?: boolean;
     /**
+     * when true, will make all optional properties be defined as nullish.
+     */
+    withOptionalAsNullish?: boolean;
+    /**
      * when true, will add the default values from the openapi schemas to the generated zod schemas
      *
      * @default true

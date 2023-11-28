@@ -224,7 +224,7 @@ export function getZodSchema({ schema, ctx, meta: inheritedMeta, options }: Conv
             const propsMap = Object.entries(schema.properties).map(([prop, propSchema]) => {
                 const propMetadata = {
                     ...meta,
-                    isRequired: isPartial
+                    isRequired: !options?.withOptionalAsNullish && isPartial
                         ? true
                         : hasRequiredArray
                         ? schema.required?.includes(prop)
@@ -254,7 +254,7 @@ export function getZodSchema({ schema, ctx, meta: inheritedMeta, options }: Conv
                 " }";
         }
 
-        const partial = isPartial ? ".partial()" : "";
+        const partial = isPartial && !options?.withOptionalAsNullish ? ".partial()" : "";
 
         return code.assign(`z.object(${properties})${partial}${additionalPropsSchema}${readonly}`);
     }
@@ -282,7 +282,7 @@ export const getZodChain = ({ schema, meta, options }: ZodChainArgs) => {
 
     const output = chains
         .concat(
-            getZodChainablePresence(schema, meta),
+            getZodChainablePresence(schema, meta, options),
             options?.withDefaultValues !== false ? getZodChainableDefault(schema) : []
         )
         .filter(Boolean)
@@ -290,7 +290,7 @@ export const getZodChain = ({ schema, meta, options }: ZodChainArgs) => {
     return output ? `.${output}` : "";
 };
 
-const getZodChainablePresence = (schema: SchemaObject, meta?: CodeMetaData) => {
+const getZodChainablePresence = (schema: SchemaObject, meta?: CodeMetaData, options?: TemplateContext["options"]) => {
     if (schema.nullable && !meta?.isRequired) {
         return "nullish()";
     }
@@ -300,7 +300,12 @@ const getZodChainablePresence = (schema: SchemaObject, meta?: CodeMetaData) => {
     }
 
     if (!meta?.isRequired) {
+      if (options?.withOptionalAsNullish) {
+        return "nullish()";
+      }
+      else {
         return "optional()";
+      }
     }
 
     return "";
