@@ -216,43 +216,44 @@ export function getZodSchema({ schema, ctx, meta: inheritedMeta, options }: Conv
             );
         }
 
+        if (!schema.properties) {
+          return code.assign("z.record(z.any())")
+        }
+
         const hasRequiredArray = schema.required && schema.required.length > 0;
         const isPartial = options?.withImplicitRequiredProps ? false : !schema.required?.length;
-        let properties = "{}";
 
-        if (schema.properties) {
-            const propsMap = Object.entries(schema.properties).map(([prop, propSchema]) => {
-                const propMetadata = {
-                    ...meta,
-                    isRequired: !options?.withOptionalAsNullish && isPartial
-                        ? true
-                        : hasRequiredArray
-                        ? schema.required?.includes(prop)
-                        : options?.withImplicitRequiredProps,
-                    name: prop,
-                } as CodeMetaData;
+        const propsMap = Object.entries(schema.properties).map(([prop, propSchema]) => {
+            const propMetadata = {
+                ...meta,
+                isRequired: !options?.withOptionalAsNullish && isPartial
+                    ? true
+                    : hasRequiredArray
+                    ? schema.required?.includes(prop)
+                    : options?.withImplicitRequiredProps,
+                name: prop,
+            } as CodeMetaData;
 
-                let propActualSchema = propSchema;
+            let propActualSchema = propSchema;
 
-                if (isReferenceObject(propSchema) && ctx?.resolver) {
-                    propActualSchema = ctx.resolver.getSchemaByRef(propSchema.$ref);
-                    if (!propActualSchema) {
-                        throw new Error(`Schema ${propSchema.$ref} not found`);
-                    }
+            if (isReferenceObject(propSchema) && ctx?.resolver) {
+                propActualSchema = ctx.resolver.getSchemaByRef(propSchema.$ref);
+                if (!propActualSchema) {
+                    throw new Error(`Schema ${propSchema.$ref} not found`);
                 }
+            }
 
-                const propCode =
-                    getZodSchema({ schema: propSchema, ctx, meta: propMetadata, options }) +
-                    getZodChain({ schema: propActualSchema as SchemaObject, meta: propMetadata, options });
+            const propCode =
+                getZodSchema({ schema: propSchema, ctx, meta: propMetadata, options }) +
+                getZodChain({ schema: propActualSchema as SchemaObject, meta: propMetadata, options });
 
-                return [prop, propCode.toString()];
-            });
+            return [prop, propCode.toString()];
+        });
 
-            properties =
-                "{ " +
-                propsMap.map(([prop, propSchema]) => `${wrapWithQuotesIfNeeded(prop!)}: ${propSchema}`).join(", ") +
-                " }";
-        }
+        const properties =
+            "{ " +
+            propsMap.map(([prop, propSchema]) => `${wrapWithQuotesIfNeeded(prop!)}: ${propSchema}`).join(", ") +
+            " }";
 
         const partial = isPartial && !options?.withOptionalAsNullish ? ".partial()" : "";
 
