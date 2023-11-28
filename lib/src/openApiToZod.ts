@@ -179,6 +179,7 @@ export function getZodSchema({ schema, ctx, meta: inheritedMeta, options }: Conv
                 .with("string", () =>
                     match(schema.format)
                         .with("binary", () => "z.instanceof(File)")
+                        .with("date-time", () => "z.coerce.date()")
                         .otherwise(() => "z.string()")
                 )
                 .otherwise((type) => `z.${type}()`)
@@ -325,6 +326,7 @@ const getZodChainableDefault = (schema: SchemaObject) => {
     if (schema.default) {
         const value = match(schema.type)
             .with("number", "integer", () => unwrapQuotesIfNeeded(schema.default))
+            .with("string", () => schema.format === "date-time" ? `new Date("${schema.default}")` : JSON.stringify(schema.default))
             .otherwise(() => JSON.stringify(schema.default));
         return `default(${value})`;
     }
@@ -365,7 +367,6 @@ const getZodChainableStringValidations = (schema: SchemaObject) => {
             .with("hostname", () => "url()")
             .with("uri", () => "url()")
             .with("uuid", () => "uuid()")
-            .with("date-time", () => "datetime({ offset: true })")
             .otherwise(() => "");
 
         if (chain) {
