@@ -293,6 +293,10 @@ export const getZodChain = ({ schema, meta, options }: ZodChainArgs) => {
 };
 
 const getZodChainablePresence = (schema: SchemaObject, meta?: CodeMetaData, options?: TemplateContext["options"]) => {
+    // Discriminator literals (single-value enum or const) must not be nullish
+    // as it breaks z.discriminatedUnion() introspection
+    if (schema.enum?.length === 1) return "";
+
     if (schema.nullable && !meta?.isRequired) {
         return "nullish()";
     }
