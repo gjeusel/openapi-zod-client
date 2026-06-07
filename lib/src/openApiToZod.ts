@@ -205,16 +205,23 @@ export function getZodSchema({ schema, ctx, meta: inheritedMeta, options }: Conv
         const additionalPropsSchema = additionalProps === false ? "" : ".passthrough()";
 
         if (typeof schema.additionalProperties === "object" && Object.keys(schema.additionalProperties).length > 0) {
-            return code.assign(
-                `z.record(${(
-                    getZodSchema({ schema: schema.additionalProperties, ctx, meta, options }) +
-                    getZodChain({
-                        schema: schema.additionalProperties as SchemaObject,
-                        meta: { ...meta, isRequired: true },
-                        options,
-                    })
-                ).toString()})`
-            );
+            const valueCode = (
+                getZodSchema({ schema: schema.additionalProperties, ctx, meta, options }) +
+                getZodChain({
+                    schema: schema.additionalProperties as SchemaObject,
+                    meta: { ...meta, isRequired: true },
+                    options,
+                })
+            ).toString();
+
+            // When propertyNames types the keys (e.g. dict[Enum, V]), emit z.record(keySchema, valueSchema)
+            // so the map key is narrowed instead of defaulting to z.string().
+            if (schema.propertyNames && typeof schema.propertyNames === "object") {
+                const keyCode = getZodSchema({ schema: schema.propertyNames, ctx, meta, options }).toString();
+                return code.assign(`z.record(${keyCode}, ${valueCode})`);
+            }
+
+            return code.assign(`z.record(${valueCode})`);
         }
 
         if (!schema.properties) {

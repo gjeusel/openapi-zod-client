@@ -65,6 +65,12 @@ export const getOpenApiDependencyGraph = (
             if (schema.additionalProperties && typeof schema.additionalProperties === "object") {
                 visit(schema.additionalProperties, fromRef);
             }
+
+            // propertyNames types the keys of an open map (e.g. dict[Enum, V]); visit it so the
+            // key schema isn't pruned as unreferenced when it's only reachable through the map key.
+            if (schema.propertyNames && typeof schema.propertyNames === "object") {
+                visit(schema.propertyNames, fromRef);
+            }
         }
     };
 
